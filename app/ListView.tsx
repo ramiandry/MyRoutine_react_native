@@ -16,6 +16,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNominatimSearch, NominatimResult } from '../hooks/useNominatimSearch';
+import { router } from 'expo-router';
+import useGeminiAPI from '@/hooks/useGenai';
 
 // Définition des interfaces
 interface ListItem {
@@ -32,6 +34,8 @@ export default function MadagascarQuartiersView(): React.ReactElement {
   const [village, setVillage] = useState<string>(''); // Nom de votre village à Madagascar
   const [showVillageInput, setShowVillageInput] = useState<boolean>(false);
   const [listItems, setListItems] = useState<ListItem[]>([]);
+  const { generateContent, loading } = useGeminiAPI();
+  const [geminiLoading, setGeminiLoading] = useState<boolean>(false);
 
   // Utilisation du hook Nominatim spécialisé pour Madagascar
   const {
@@ -97,6 +101,42 @@ export default function MadagascarQuartiersView(): React.ReactElement {
     setListItems(updatedItems);
   };
 
+  const handleClickItineraires = async (): Promise<void> => {
+    try {
+      // Afficher l'indicateur de chargement
+      setGeminiLoading(true);
+      
+      const prompt = `Générer une liste de quartiers à Madagascar.`;
+      
+      const data = await generateContent(prompt);
+      
+      if (data && data.candidates && data.candidates[0]?.content?.parts) {
+      const results =  JSON.stringify(data.candidates[0].content.parts[0].text)
+      .replace(/```json|```/g, '')
+      .replace(/\/\/.*$/gm, '')  
+      .trim();
+      console.log("Résultats de Gemini:", results);
+      router.push(`/ItineraireScreen?items=${encodeURIComponent(results)}`);
+      } else {
+        Alert.alert(
+          "Erreur",
+          "Impossible de générer l'itinéraire. Veuillez réessayer.",
+          [{ text: "OK" }]
+        );
+      }
+    } catch (error) {
+      console.error("Erreur lors de la génération:", error);
+      Alert.alert(
+        "Erreur",
+        "Une erreur s'est produite. Veuillez réessayer plus tard.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      // Masquer l'indicateur de chargement dans tous les cas
+      setGeminiLoading(false);
+    }
+  };
+
   const confirmDelete = (id: string): void => {
     const updatedList = listItems.filter(item => item.id !== id);
     setListItems(updatedList);
@@ -108,6 +148,13 @@ export default function MadagascarQuartiersView(): React.ReactElement {
     const fullDisplayName = result.display_name;
     
     addItem(placeName, fullDisplayName, result.lat, result.lon);
+  };
+
+  
+  // Fonction de navigation
+  const handleNavigateMap = () => {
+    const itemsString = JSON.stringify(listItems);
+    router.push(`/MapScreen?items=${encodeURIComponent(itemsString)}`);
   };
 
   // Fonction pour extraire le nom le plus pertinent
@@ -362,7 +409,7 @@ export default function MadagascarQuartiersView(): React.ReactElement {
       <View style={styles.footerContainer}>
         <TouchableOpacity
           style={styles.footerButton}
-          onPress={() => console.log('Voir la carte')}
+          onPress={() => handleNavigateMap()}
         >
           <Ionicons name="map" size={24} color="#FFFFFF" />
           <Text style={styles.footerButtonText}>
@@ -372,7 +419,7 @@ export default function MadagascarQuartiersView(): React.ReactElement {
         
         <TouchableOpacity
           style={[styles.footerButton, styles.routeButton]}
-          onPress={() => console.log('Mes itinéraires')}
+          onPress={() => handleClickItineraires()}
         >
           <Ionicons name="git-branch-outline" size={24} color="#FFFFFF" />
           <Text style={styles.footerButtonText}>
@@ -380,6 +427,16 @@ export default function MadagascarQuartiersView(): React.ReactElement {
           </Text>
         </TouchableOpacity>
       </View>
+      
+      {/* Overlay de chargement Gemini */}
+      {geminiLoading && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#007AFF" />
+            <Text style={styles.loadingText}>Génération de l'itinéraire...</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -672,5 +729,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  // Styles pour l'overlay de chargement
+  loadingOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 20,
+    width: width * 0.8,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
   },
 });

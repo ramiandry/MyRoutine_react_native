@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: "center",
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "bold",
     marginBottom: 10,
     color: "#FFFFFF", // Texte blanc pour contraster avec fond bleu
