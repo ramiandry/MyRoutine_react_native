@@ -106,7 +106,7 @@ export default function MadagascarQuartiersView(): React.ReactElement {
       // Afficher l'indicateur de chargement
       setGeminiLoading(true);
       
-      const prompt = `Générer une liste de quartiers à Madagascar.`;
+      const prompt = JSON.stringify(listItems);
       
       const data = await generateContent(prompt);
       
@@ -115,8 +115,9 @@ export default function MadagascarQuartiersView(): React.ReactElement {
       .replace(/```json|```/g, '')
       .replace(/\/\/.*$/gm, '')  
       .trim();
-      console.log("Résultats de Gemini:", results);
-      router.push(`/ItineraireScreen?items=${encodeURIComponent(results)}`);
+      const response = JSON.parse(results)
+      console.log("Résultats de Gemini:", response);
+      router.push(`/ItineraireScreen?items=${encodeURIComponent(response)}`);
       } else {
         Alert.alert(
           "Erreur",
