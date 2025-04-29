@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -428,7 +428,7 @@ export default function ItineraireScreen(): React.ReactElement {
           <Text style={styles.addressNumber}>{index + 1}</Text>
         </View>
         <View style={styles.addressContent}>
-          <Text style={styles.addressName}>{item?.from ? item.from.split(',')[0] : 'Unknown'}</Text>
+          <Text style={styles.addressName}>{item?.to ? item.to.split(',')[0] : 'Unknown'}</Text>
         </View>
       </View>
       
@@ -447,7 +447,7 @@ export default function ItineraireScreen(): React.ReactElement {
           <Text style={styles.addressNumber}>{index + 2}</Text>
         </View>
         <View style={styles.addressContent}>
-          <Text style={styles.addressName}>{item?.to ? item.to.split(',')[0] : 'Unknown'}</Text>
+          <Text style={styles.addressName}>{item?.from ? item.from.split(',')[0] : 'Unknown'}</Text>
         </View>
       </View>
       

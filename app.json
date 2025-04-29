@@ -15,7 +15,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/myicon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.aina16.my_routine"
     },
     "web": {
       "bundler": "metro",
@@ -36,6 +37,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "862a279c-14aa-492f-a22f-5c1449d69524"
+      }
     }
   }
 }
