@@ -486,17 +486,6 @@ export default function ItineraireScreen(): React.ReactElement {
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Mon Itinéraire</Text>
-        <TouchableOpacity style={styles.mapButton} onPress={() => {
-          // Naviguer vers la carte avec tous les points
-          if (addresses && addresses.length > 0) {
-            const addressesString = JSON.stringify(addresses);
-            router.push(`/MapScreen?items=${encodeURIComponent(addressesString)}&showRoute=true`);
-          } else {
-            Alert.alert("Aucun itinéraire", "Il n'y a pas de destinations à afficher sur la carte.");
-          }
-        }}>
-          <Ionicons name="map-outline" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
       </View>
       
       {loading ? (
