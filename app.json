@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "my_routine",
+    "name": "MyRoutine",
     "slug": "my_routine",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,18 +8,22 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/myicon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.aina16.my_routine"
-    },
-    "web": {
-      "bundler": "metro",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.aina16.my_routine",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyB-Y2OekfCGIBSAb7qdH_dhEqwy6-YuosI"
+        }
+      },
+  "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/splash_screen.png"
     },

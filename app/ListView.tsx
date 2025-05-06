@@ -12,7 +12,8 @@ import {
   Dimensions,
   ListRenderItemInfo,
   ActivityIndicator,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNominatimSearch, NominatimResult } from '../hooks/useNominatimSearch';
@@ -29,15 +30,34 @@ interface ListItem {
   confirmDelete?: boolean;
 }
 
-export default function MadagascarQuartiersView(): React.ReactElement {
+// Définition d'un pays
+interface Country {
+  code: string;
+  name: string;
+  flag: string;
+}
+
+// Liste des pays disponibles
+const AVAILABLE_COUNTRIES: Country[] = [
+  { code: 'mg', name: 'Madagascar', flag: '🇲🇬' },
+  { code: 'fr', name: 'France', flag: '🇫🇷' },
+  { code: 'us', name: 'États-Unis', flag: '🇺🇸' },
+  { code: 'ca', name: 'Canada', flag: '🇨🇦' },
+  { code: 'gb', name: 'Royaume-Uni', flag: '🇬🇧' },
+  { code: 'de', name: 'Allemagne', flag: '🇩🇪' },
+];
+
+export default function QuartiersView(): React.ReactElement {
   const [searchText, setSearchText] = useState<string>('');
-  const [village, setVillage] = useState<string>(''); // Nom de votre village à Madagascar
+  const [village, setVillage] = useState<string>(''); // Nom du village/ville
   const [showVillageInput, setShowVillageInput] = useState<boolean>(false);
   const [listItems, setListItems] = useState<ListItem[]>([]);
   const { generateContent, loading } = useGeminiAPI();
   const [geminiLoading, setGeminiLoading] = useState<boolean>(false);
+  const [selectedCountry, setSelectedCountry] = useState<Country>(AVAILABLE_COUNTRIES[0]); // Default to Madagascar
+  const [showCountryModal, setShowCountryModal] = useState<boolean>(false);
 
-  // Utilisation du hook Nominatim spécialisé pour Madagascar
+  // Utilisation du hook Nominatim
   const {
     results: searchResults,
     isLoading,
@@ -47,10 +67,10 @@ export default function MadagascarQuartiersView(): React.ReactElement {
   } = useNominatimSearch({
     query: '',
     limit: 15,
-    countryCode: 'mg',
+    countryCode: selectedCountry.code,
     debounceMs: 400,
     addressDetails: true,
-    inPlace: village // Contexte du village
+    inPlace: village // Contexte du village/ville
   });
 
   // Mettre à jour la recherche lorsque searchText change
@@ -71,7 +91,7 @@ export default function MadagascarQuartiersView(): React.ReactElement {
     );
     
     if (exists) {
-      Alert.alert('Doublon', 'Ce quartier est déjà dans votre liste');
+      Alert.alert('Doublon', 'Cette destination est déjà dans votre liste');
       return;
     }
     
@@ -106,18 +126,22 @@ export default function MadagascarQuartiersView(): React.ReactElement {
       // Afficher l'indicateur de chargement
       setGeminiLoading(true);
       
-      const prompt = JSON.stringify(listItems);
+      const prompt = `
+            Pays : ${selectedCountry}
+
+            ${JSON.stringify(listItems)}
+      `;
       
       const data = await generateContent(prompt);
       
       if (data && data.candidates && data.candidates[0]?.content?.parts) {
-      const results =  JSON.stringify(data.candidates[0].content.parts[0].text)
-      .replace(/```json|```/g, '')
-      .replace(/\/\/.*$/gm, '')  
-      .trim();
-      const response = JSON.parse(results)
-      console.log("Résultats de Gemini:", response);
-      router.push(`/ItineraireScreen?items=${encodeURIComponent(response)}`);
+        const results = JSON.stringify(data.candidates[0].content.parts[0].text)
+          .replace(/```json|```/g, '')
+          .replace(/\/\/.*$/gm, '')  
+          .trim();
+        const response = JSON.parse(results);
+        console.log("Résultats de Gemini:", response);
+        router.push(`/ItineraireScreen?items=${encodeURIComponent(response)}`);
       } else {
         Alert.alert(
           "Erreur",
@@ -151,8 +175,7 @@ export default function MadagascarQuartiersView(): React.ReactElement {
     addItem(placeName, fullDisplayName, result.lat, result.lon);
   };
 
-  
-  // Fonction de navigation
+  // Fonction de navigation vers la carte
   const handleNavigateMap = () => {
     const itemsString = JSON.stringify(listItems);
     router.push(`/MapScreen?items=${encodeURIComponent(itemsString)}`);
@@ -165,7 +188,7 @@ export default function MadagascarQuartiersView(): React.ReactElement {
     if (result.address?.neighbourhood) return result.address.neighbourhood;
     if (result.address?.locality) return result.address.locality;
     
-    // Si c'est un quartier ou section (common dans les données OSM Madagascar)
+    // Si c'est un quartier ou section
     if (result.type === 'suburb' || result.type === 'quarter' || result.type === 'neighbourhood') {
       // Prendre le premier élément du display_name qui est généralement le nom direct
       return result.display_name.split(',')[0].trim();
@@ -274,6 +297,23 @@ export default function MadagascarQuartiersView(): React.ReactElement {
     return typeLabels[type] || '';
   };
 
+  // Fonction pour rendre un élément de la liste des pays
+  const renderCountryItem = ({ item }: ListRenderItemInfo<Country>): React.ReactElement => (
+    <TouchableOpacity 
+      style={styles.countryItem} 
+      onPress={() => {
+        setSelectedCountry(item);
+        setShowCountryModal(false);
+      }}
+    >
+      <Text style={styles.countryFlag}>{item.flag}</Text>
+      <Text style={styles.countryName}>{item.name}</Text>
+      {item.code === selectedCountry.code && (
+        <Ionicons name="checkmark" size={22} color="#007AFF" />
+      )}
+    </TouchableOpacity>
+  );
+
   // Calculate the top position for suggestionsContainer dynamically
   const suggestionsContainerStyle = {
     ...styles.suggestionsContainer,
@@ -286,25 +326,33 @@ export default function MadagascarQuartiersView(): React.ReactElement {
       
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mes destinations</Text>
-        <TouchableOpacity 
-          style={styles.settingsButton}
-          onPress={() => setShowVillageInput(!showVillageInput)}
-        >
-          <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
-        </TouchableOpacity>
+        <View style={styles.headerControls}>
+          <TouchableOpacity 
+            style={styles.countryButton}
+            onPress={() => setShowCountryModal(true)}
+          >
+            <Text style={styles.countryButtonText}>{selectedCountry.flag}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.settingsButton}
+            onPress={() => setShowVillageInput(!showVillageInput)}
+          >
+            <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {showVillageInput && (
         <View style={styles.villageInputContainer}>
           <TextInput
             style={styles.villageInput}
-            placeholder="Entrez le nom de votre village/ville"
+            placeholder={`Entrez le nom de votre ville (${selectedCountry.name})`}
             value={village}
             onChangeText={setVillage}
             returnKeyType="done"
           />
           <Text style={styles.villageHelp}>
-            Précisez votre village pour des résultats plus précis
+            Précisez votre localité pour des résultats plus précis
           </Text>
         </View>
       )}
@@ -312,7 +360,7 @@ export default function MadagascarQuartiersView(): React.ReactElement {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Rechercher un quartier..."
+          placeholder={`Rechercher un quartier en ${selectedCountry.name}...`}
           value={searchText}
           onChangeText={setSearchText}
           returnKeyType="search"
@@ -358,7 +406,7 @@ export default function MadagascarQuartiersView(): React.ReactElement {
           ) : searchResults.length === 0 ? (
             <View style={styles.emptyResultsContainer}>
               <Text style={styles.emptyResultsText}>
-                Aucun destination trouvé pour "{searchText}"
+                Aucune destination trouvée pour "{searchText}"
               </Text>
               <TouchableOpacity 
                 style={styles.addManualButton}
@@ -397,10 +445,10 @@ export default function MadagascarQuartiersView(): React.ReactElement {
           <View style={styles.emptyContainer}>
             <Ionicons name="location-outline" size={48} color="#CCCCCC" />
             <Text style={styles.emptyText}>
-              Aucun quartier ajouté
+              Aucune destination ajoutée
             </Text>
             <Text style={styles.emptySubText}>
-              Recherchez et ajoutez des quartiers de Madagascar
+              Recherchez et ajoutez des destinations en {selectedCountry.name}
             </Text>
           </View>
         }
@@ -428,6 +476,34 @@ export default function MadagascarQuartiersView(): React.ReactElement {
           </Text>
         </TouchableOpacity>
       </View>
+      
+      {/* Modal de sélection de pays */}
+      <Modal
+        visible={showCountryModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowCountryModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choisir un pays</Text>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setShowCountryModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={AVAILABLE_COUNTRIES}
+              renderItem={renderCountryItem}
+              keyExtractor={(item) => item.code}
+              contentContainerStyle={styles.countryList}
+            />
+          </View>
+        </View>
+      </Modal>
       
       {/* Overlay de chargement Gemini */}
       {geminiLoading && (
@@ -466,6 +542,22 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  headerControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  countryButton: {
+    marginRight: 15,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  countryButtonText: {
+    fontSize: 20,
   },
   settingsButton: {
     padding: 5,
@@ -534,7 +626,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 100,
-    // top property removed from here and applied dynamically
   },
   suggestionItem: {
     paddingVertical: 12,
@@ -698,7 +789,7 @@ const styles = StyleSheet.create({
     color: '#BBB',
     textAlign: 'center',
   },
-  // Nouveaux styles pour le footer avec les boutons
+  // Styles pour le footer avec les boutons
   footerContainer: {
     flexDirection: 'row',
     paddingHorizontal: 15,
@@ -730,6 +821,54 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  // Styles pour le modal de sélection de pays
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  modalCloseButton: {
+    padding: 5,
+  },
+  countryList: {
+    paddingBottom: 30,
+  },
+  countryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  countryFlag: {
+    fontSize: 24,
+    marginRight: 15,
+  },
+  countryName: {
+    fontSize: 16,
+    color: '#333',
+    flex: 1,
   },
   // Styles pour l'overlay de chargement
   loadingOverlay: {

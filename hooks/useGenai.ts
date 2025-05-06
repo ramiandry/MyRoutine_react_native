@@ -46,9 +46,15 @@ const useGeminiAPI = (): UseGeminiAPIReturn => {
                   - Duration met chiffre de duration max min(2 min),
                   - Distance : chiffre de distance max km (4 km)
                   - Chaque adresse de rue ne doit pas repeter
+                  - L'itinéraire doit être optimisé, c'est-à-dire que les adresses doivent être disposées de manière à minimiser la distance et la durée.
 
 
+                  Si pays est Madagascar
                   position actuelle Latitude et Longitude  : -18.89123,47.558731, Ankeranana, Antananarivo.
+                  Si pays est France
+                  position actuelle Latitude et Longitude  : 48.8584, 2.2945 ,Tour Eiffel, Paris 
+
+
                   exemple des données : 
                    [
                      { id: '3', name: 'Ankadifotsy', fullName: 'Ankadifotsy, Antananarivo', lat: '-18.9126', lon: '47.5312' },
@@ -60,10 +66,10 @@ const useGeminiAPI = (): UseGeminiAPIReturn => {
                    exemple de reponse : [
                     {
                       "id": "1",
-                      "to": "Ankeranana",
+                      "to": "Ankeranana (position actuelle)",
                       "from": "Ankadifotsy",
                       "duration": "10",
-                      "distance": "4"
+                      "distance": "6"
                     },
                     {
                       "id": "2",
