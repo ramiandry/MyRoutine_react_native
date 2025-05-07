@@ -18,11 +18,11 @@ import { useLocalSearchParams, router } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
-import * as IntentLauncher from 'expo-intent-launcher'; // Import for Android
-import * as WebBrowser from 'expo-web-browser'; // Import for iOS
+import * as IntentLauncher from 'expo-intent-launcher'; // Pour Android
+import * as WebBrowser from 'expo-web-browser'; // Pour iOS
 import { useRoute } from '@react-navigation/native';
 
-// Using the provided interface definition
+// Interface pour les points de l'itinéraire
 interface AddressItem {
   id: string;
   to: string;
@@ -31,7 +31,7 @@ interface AddressItem {
   distance?: string;
 }
 
-// Define the route params interface
+// Interface pour les paramètres de route
 interface RouteParams {
   items: string;
 }
@@ -43,19 +43,19 @@ export default function ItineraireScreen(): React.ReactElement {
   const [loading, setLoading] = useState<boolean>(true);
   const [addresses, setAddresses] = useState<AddressItem[]>([]);
   const [exportLoading, setExportLoading] = useState<boolean>(false);
+  const [pdfUri, setPdfUri] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
-  // Add a flag to track if data processing has been done
   const [dataProcessed, setDataProcessed] = useState<boolean>(false);
 
   useEffect(() => {
-    // Only run this effect once to prevent infinite loop
+    // Éviter le retraitement des données
     if (dataProcessed) return;
     
     try {
       // Récupérer les données depuis les deux sources possibles
       let itemsData = '';
       
-      // Debug information collection
+      // Collecte des informations de débogage
       let debugData = 'Checking data sources:\n';
       
       // Essayer de récupérer depuis route.params
@@ -159,7 +159,7 @@ export default function ItineraireScreen(): React.ReactElement {
         setAddresses([]);
       }
       
-      // Save debug info for display
+      // Enregistrer les infos de débogage
       setDebugInfo(debugData);
       
     } catch (error) {
@@ -172,18 +172,22 @@ export default function ItineraireScreen(): React.ReactElement {
       );
     } finally {
       setLoading(false);
-      // Mark data as processed to prevent re-processing
+      // Marquer les données comme traitées
       setDataProcessed(true);
     }
-  }, [routeParams, localParams, dataProcessed]); // Include dataProcessed in dependency array
+  }, [routeParams, localParams, dataProcessed]); 
 
-  // Fonction pour générer le contenu HTML du PDF
+  // Fonction pour générer le contenu HTML du PDF avec un design amélioré
   const generatePdfHtml = () => {
-    // Style pour tout le document
     const totalDistance = calculateTotalDistance();
     const totalDuration = calculateTotalDuration();
+    const currentDate = new Date().toLocaleDateString('fr-FR', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
     
-    // Création du code HTML
+    // En-tête du document HTML
     let html = `
       <!DOCTYPE html>
       <html lang="fr">
@@ -193,14 +197,26 @@ export default function ItineraireScreen(): React.ReactElement {
         <title>Itinéraire Madagascar</title>
         <style>
           body {
-            font-family: 'Helvetica', sans-serif;
+            font-family: 'Helvetica', Arial, sans-serif;
             margin: 40px;
             color: #333333;
+            line-height: 1.6;
+          }
+          .header {
+            margin-bottom: 30px;
+          }
+          .logo {
+            font-size: 14px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
           }
           .title {
             color: #007AFF;
-            font-size: 24px;
-            margin-bottom: 8px;
+            font-size: 26px;
+            font-weight: bold;
+            margin-bottom: 10px;
           }
           .export-date {
             color: #666666;
@@ -208,29 +224,58 @@ export default function ItineraireScreen(): React.ReactElement {
             margin-bottom: 20px;
           }
           .summary {
+            background-color: #F5F9FF;
+            border-radius: 8px;
+            padding: 20px;
             margin-bottom: 30px;
+            border: 1px solid #E0E9FF;
+          }
+          .summary-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #007AFF;
+            margin-bottom: 10px;
+          }
+          .summary-grid {
+            display: flex;
+            justify-content: space-between;
           }
           .summary-item {
-            font-size: 14px;
-            margin-bottom: 6px;
+            flex: 1;
+          }
+          .summary-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 3px;
+          }
+          .summary-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
           }
           .separator {
-            height: 2px;
-            background-color: #CCCCCC;
-            margin-bottom: 30px;
+            height: 1px;
+            background-color: #E0E9FF;
+            margin: 30px 0;
+          }
+          .route-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
           }
           .route-segment {
-            margin-bottom: 25px;
+            margin-bottom: 30px;
             page-break-inside: avoid;
           }
           .address-row {
             display: flex;
             align-items: center;
-            margin-bottom: 3px;
+            margin-bottom: 5px;
           }
           .circle {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             background-color: #007AFF;
             border-radius: 50%;
             display: flex;
@@ -238,49 +283,75 @@ export default function ItineraireScreen(): React.ReactElement {
             align-items: center;
             color: white;
             font-size: 12px;
-            margin-right: 10px;
+            font-weight: bold;
+            margin-right: 15px;
           }
           .address-name {
-            font-size: 14px;
+            font-size: 16px;
+            font-weight: 500;
           }
           .connection {
-            margin-left: 10px;
             display: flex;
-            margin-bottom: 3px;
+            margin: 8px 0;
           }
           .vertical-line {
-            width: 1px;
-            height: 30px;
-            background-color: #CCCCCC;
-            margin-left: 9px;
+            width: 2px;
+            height: 40px;
+            background-color: #E0E9FF;
+            margin-left: 11px;
           }
           .distance-info {
-            margin-left: 20px;
-            background-color: #F5F5F5;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 12px;
-            color: #666666;
+            margin-left: 25px;
+            background-color: #F5F9FF;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #555;
+            border: 1px solid #E0E9FF;
           }
-          .duration-info {
-            margin-top: 3px;
+          .distance-value, .duration-value {
+            font-weight: bold;
+            color: #007AFF;
+          }
+          .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #E0E9FF;
+            padding-top: 20px;
           }
         </style>
       </head>
       <body>
-        <div class="title">Itinéraire Madagascar</div>
-        <div class="export-date">Exporté le ${new Date().toLocaleDateString()}</div>
-        
-        <div class="summary">
-          <div class="summary-item">Nombre de destinations: ${addresses.length + 1}</div>
-          <div class="summary-item">Distance totale: ${totalDistance} km</div>
-          <div class="summary-item">Durée estimée: ${totalDuration} min</div>
+        <div class="header">
+          <div class="logo">Voyage à Madagascar</div>
+          <div class="title">Itinéraire de Voyage</div>
+          <div class="export-date">Document généré le ${currentDate}</div>
         </div>
         
-        <div class="separator"></div>
+        <div class="summary">
+          <div class="summary-title">Résumé du trajet</div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="summary-label">Destinations</div>
+              <div class="summary-value">${addresses.length + 1}</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Distance totale</div>
+              <div class="summary-value">${totalDistance} km</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Durée estimée</div>
+              <div class="summary-value">${totalDuration} min</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="route-title">Détails de l'itinéraire</div>
     `;
     
-    // Générer chaque segment de route
+    // Générer chaque segment de route avec un style amélioré
     addresses.forEach((address, index) => {
       const fromText = address?.from ? address.from.split(',')[0] : 'Unknown';
       const toText = address?.to ? address.to.split(',')[0] : 'Unknown';
@@ -295,8 +366,8 @@ export default function ItineraireScreen(): React.ReactElement {
           <div class="connection">
             <div class="vertical-line"></div>
             <div class="distance-info">
-              <div>Distance: ${address.distance || 'N/A'}</div>
-              <div class="duration-info">Durée: ${address.duration || 'N/A'}</div>
+              <div>Distance: <span class="distance-value">${address.distance || 'N/A'}</span></div>
+              <div>Durée: <span class="duration-value">${address.duration || 'N/A'}</span></div>
             </div>
           </div>
           
@@ -305,11 +376,16 @@ export default function ItineraireScreen(): React.ReactElement {
             <div class="address-name">${toText}</div>
           </div>
         </div>
+        
+        ${index < addresses.length - 1 ? '<div class="separator"></div>' : ''}
       `;
     });
     
-    // Fermer le document HTML
+    // Pied de page et fermeture du document HTML
     html += `
+        <div class="footer">
+          © ${new Date().getFullYear()} - Itinéraire Madagascar - Tous droits réservés
+        </div>
       </body>
       </html>
     `;
@@ -317,7 +393,7 @@ export default function ItineraireScreen(): React.ReactElement {
     return html;
   };
 
-  // Nouvelle fonction pour ouvrir un fichier PDF selon la plateforme
+  // Fonction pour ouvrir un fichier PDF selon la plateforme
   const openPDF = async (filePath: string) => {
     try {
       if (Platform.OS === 'ios') {
@@ -325,7 +401,7 @@ export default function ItineraireScreen(): React.ReactElement {
         await WebBrowser.openBrowserAsync(`file://${filePath}`);
         
       } else if (Platform.OS === 'android') {
-        // Sur Android, utiliser IntentLauncher pour ouvrir le PDF
+        // Sur Android, utiliser IntentLauncher pour ouvrir le PDF avec l'application par défaut
         const contentUri = await FileSystem.getContentUriAsync(filePath);
         await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
           data: contentUri,
@@ -364,7 +440,7 @@ export default function ItineraireScreen(): React.ReactElement {
     }
   };
 
-  // Fonction pour créer et enregistrer le PDF avec expo-print
+  // Fonction améliorée pour créer et partager le PDF
   const exportToPDF = async () => {
     try {
       setExportLoading(true);
@@ -372,41 +448,49 @@ export default function ItineraireScreen(): React.ReactElement {
       // Générer le HTML pour le PDF
       const htmlContent = generatePdfHtml();
       
-      // Créer le PDF avec expo-print
+      // Options avancées pour la génération du PDF
       const { uri } = await Print.printToFileAsync({
         html: htmlContent,
         base64: false,
-        width: 595, // A4 width in points (72dpi)
-        height: 842, // A4 height in points (72dpi)
+        width: 595.28, // Largeur A4 en points (72dpi)
+        height: 841.89, // Hauteur A4 en points (72dpi)
+        margins: {
+          left: 40,
+          top: 40,
+          right: 40,
+          bottom: 40
+        }
       });
       
-      // Créer un nom de fichier avec la date pour éviter les doublons
+      // Stocker l'URI du PDF généré
+      setPdfUri(uri);
+      
+      // Créer un nom de fichier avec timestamp pour éviter les doublons
       const timestamp = new Date().getTime();
       const fileName = `itineraire_madagascar_${timestamp}.pdf`;
       
-      // Définir le chemin de destination pour l'enregistrement
+      // Définir le chemin de destination pour un stockage permanent
       const destinationPath = FileSystem.documentDirectory + fileName;
       
-      // Copier le fichier du cache vers le répertoire de documents permanent
+      // Copier le fichier du cache vers le répertoire permanent
       await FileSystem.copyAsync({
         from: uri,
         to: destinationPath
       });
       
-      // Supprimer le fichier temporaire
+      // Supprimer le fichier temporaire pour économiser de l'espace
       await FileSystem.deleteAsync(uri, { idempotent: true });
       
-      // Informer l'utilisateur que l'enregistrement est terminé
+      console.log(`PDF enregistré à: ${destinationPath}`);
+      
+      // Informer l'utilisateur et ouvrir le PDF
       Alert.alert(
-        "Exportation terminée",
+        "Exportation réussie",
         "Le PDF a été enregistré avec succès. Ouverture du document...",
         [{ text: "OK" }]
       );
       
-      // Pour le débogage, consigner le chemin où le fichier a été enregistré
-      console.log(`PDF enregistré à: ${destinationPath}`);
-      
-      // Ouvrir automatiquement le PDF
+      // Ouvrir le PDF automatiquement
       await openPDF(destinationPath);
       
     } catch (error:any) {
@@ -414,6 +498,46 @@ export default function ItineraireScreen(): React.ReactElement {
       Alert.alert(
         "Erreur",
         `Impossible d'enregistrer l'itinéraire en PDF: ${error?.message}`
+      );
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  // Fonction pour partager directement le PDF sans l'enregistrer
+  const sharePDF = async () => {
+    try {
+      setExportLoading(true);
+      
+      // Générer le HTML et créer le PDF temporaire
+      const htmlContent = generatePdfHtml();
+      const { uri } = await Print.printToFileAsync({
+        html: htmlContent,
+        base64: false
+      });
+      
+      // Vérifier si le partage est disponible
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Partager votre itinéraire',
+          UTI: 'com.adobe.pdf' // Pour iOS
+        });
+      } else {
+        Alert.alert(
+          "Partage indisponible", 
+          "Le partage de fichiers n'est pas disponible sur cet appareil."
+        );
+      }
+      
+      // Nettoyer le fichier temporaire après partage
+      await FileSystem.deleteAsync(uri, { idempotent: true });
+      
+    } catch (error:any) {
+      console.error("Erreur lors du partage du PDF:", error);
+      Alert.alert(
+        "Erreur",
+        `Impossible de partager l'itinéraire: ${error?.message}`
       );
     } finally {
       setExportLoading(false);
@@ -544,6 +668,7 @@ export default function ItineraireScreen(): React.ReactElement {
           )}
           
           <View style={styles.footerContainer}>
+            {/* Bouton pour exporter et ouvrir le PDF */}
             <TouchableOpacity
               style={[
                 styles.footerButton, 
@@ -560,6 +685,18 @@ export default function ItineraireScreen(): React.ReactElement {
                   <Text style={styles.footerButtonText}>Enregistrer et ouvrir PDF</Text>
                 </>
               )}
+            </TouchableOpacity>
+            
+            {/* Bouton pour partager directement le PDF */}
+            <TouchableOpacity
+              style={[
+                styles.shareButton, 
+                (!addresses || !Array.isArray(addresses) || addresses.length === 0) ? styles.disabledButton : {}
+              ]}
+              onPress={sharePDF}
+              disabled={exportLoading || !addresses || !Array.isArray(addresses) || addresses.length === 0}
+            >
+              <Ionicons name="share-outline" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </>
@@ -690,45 +827,16 @@ const styles = StyleSheet.create({
   distanceText: {
     fontSize: 12,
     color: '#666',
+    marginBottom: 2,
   },
   durationText: {
     fontSize: 12,
     color: '#666',
-    marginTop: 2,
   },
   segmentSeparator: {
     height: 1,
-    backgroundColor: '#EEEEEE',
-    marginTop: 10,
-  },
-  footerContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 15,
-    paddingVertical: 15,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
-  },
-  footerButton: {
-    flex: 1,
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footerButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  disabledButton: {
-    backgroundColor: '#AAAAAA',
+    backgroundColor: '#E5E5E5',
+    marginTop: 15,
   },
   loadingContainer: {
     flex: 1,
@@ -736,37 +844,81 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 15,
     fontSize: 16,
     color: '#555',
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    alignItems: 'center',
+    padding: 20,
   },
   emptyText: {
     fontSize: 18,
-    color: '#999',
-    marginTop: 15,
-    marginBottom: 10,
+    fontWeight: '500',
+    color: '#555',
+    marginVertical: 10,
   },
   emptySubText: {
     fontSize: 14,
-    color: '#BBB',
+    color: '#888',
     textAlign: 'center',
-    marginBottom: 30,
+    maxWidth: width * 0.8,
   },
   debugButton: {
-    backgroundColor: '#E5E5E5',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
-    marginTop: 20,
+    marginTop: 30,
+    padding: 10,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 5,
   },
   debugButtonText: {
     color: '#666',
     fontSize: 12,
   },
+  footerContainer: {
+    flexDirection: 'row',
+    padding: 15,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E5',
+  },
+  footerButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    flex: 1,
+    marginRight: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  shareButton: {
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 10,
+    width: 50,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  footerButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#B0C4DE',
+    opacity: 0.7,
+  }
 });

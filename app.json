@@ -22,10 +22,7 @@
         "googleMaps": {
           "apiKey": "AIzaSyB-Y2OekfCGIBSAb7qdH_dhEqwy6-YuosI"
         }
-      },
-  "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/splash_screen.png"
+      }
     },
     "plugins": [
       "expo-router",
